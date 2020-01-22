@@ -1,0 +1,156 @@
+---
+title: "Analysis of Steam Games"
+author: "s02-blue"
+date: "12/11/2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+### Introduction
+
+For our project we intend to use the [Steam Store Games (Clean Dataset)](https://www.kaggle.com/nikdavis/steam-store-games) by Nik Davis from Kaggle. The data was collected directly from the Steam Store and SteamSpy APIs through Python; [a description of the process is provided by Nik Davis](https://nik-davis.github.io/posts/2019/steam-data-collection/). The purpose of the dataset is to provide information about various aspects of games within the Steam store. Steam is a video game digital distribution service developed by Valve and was launched in 2003. The Steam platform is the largest digital distribution platform for PC gaming. The data was gathered in May 2019. Games listed in the store but unreleased were removed, as well as any non-game titles.
+
+Our initial goal was to explore the basic question of "what makes a good game?" with the idea of trying to predict the next big game.
+
+### Data
+
+The [data folder](https://github.com/sta518/team-project-s02-blue/tree/master/SteamAnalyzer/data) contains the data file, steam.csv. The dataset contains 27,075 observations, and 18 variables where each row is a game that was developed from the year 1997 to 2019. The variables describe the nature of the game, including features like release date, genre, price, and type of game (single player or multiplayer). A complete list of the initial variables is include in the [Codebook](https://github.com/sta518/team-project-s02-blue/blob/master/README.md) included in the README. 
+
+The data provided by Kaggle was already very clean in that there were no missing values, or general errors. However, for our purposes we needed to separate the different categories and generes of games. We provided out data prep in a separate R script, [data-prep.R](https://github.com/sta518/team-project-s02-blue/blob/master/data-prep.R). The use of this script resulted in the [steam_final.csv](https://github.com/sta518/team-project-s02-blue/blob/master/SteamAnalyzer/data/steam_final.csv).
+
+### Data Analysis Plan
+
+We decided early on that we intended to explore the data and investigate what makes a top game through a shiny app. There are a number of ways to define what makes a good game: high number of sales, high play time, positive reviews, etc. 
+
+Given that the sales variable, `owners`, was provided as categorical ranges and that playtime had such an incredibly large range, we decided to pursue positive reviews. The positive reviews and negative review variables were combined to create total reviews. Our chosen response variable was `percent positive reviews`.
+
+Once we established our response variable, we decided break our investigation into three parts. The first idea was to make a bunch of bar graphs to give us some visuals of who the top publishers, games, etc. This also would allow us to get a sense of the distributions of the variables and identify potential issues.  
+
+The second tab had the purpose of showing what some of the popular TV shows are at the time, in order to compare these to the kind of popular games. The idea here was to try and gain insight into what kind of thematic elements are popular in media right now! This would be accomplished via text analysis using word clouds. 
+
+The last tab is designed to use our dataset to allow someone to choose their own variables in a linear model to predict how good a game might turn out to be. We deliberately chose not to pursue a selection process for the variables but instead to allow the adjusted R-squared value to be visible and change reactively. Conceptually, this was to give users of the app a more hands-on feel of how the variables interact. 
+
+#### Shiny App Developement
+
+The app was developed not only with the intent to help us investigate the data, but also to be useable and accessible to anyone who wanted to investigate the data. Our intention for user-friendliness inspired many design decisions behind the app. Particularly, the use of boxes and tabs to keep elements organized and to keep scrolling to a minimum.
+
+### Discussion
+
+Throughout our app investigation we noticed several trends which are broken down below. 
+
+#### Exploration
+
+Through the exploration we realized that the dataset was highly skewed. This is best demonstrated by the price variable, and our response variable, the percent of positive reviews. 
+
+```{r exploration, message=FALSE, echo=FALSE, warning=FALSE}
+library(gridExtra)
+library(tidyverse)
+steam <- read_csv('SteamAnalyzer/data/steam_final.csv')
+steam<-steam%>%
+    mutate(total_rating = positive_ratings+negative_ratings, p_positive = positive_ratings/total_rating*100)
+
+ price100 = steam%>%
+            filter(total_rating >100)
+price1000 = steam%>%
+            filter(total_rating >1000)
+price10000 = steam%>%
+            filter(total_rating >10000)
+        
+p1 =  ggplot(steam, aes(x = price)) +
+            geom_histogram(binwidth = 2, fill = "#00008b") + labs(title= "Full Data", y = "Number of Games", x = "Price of Game ($)") + theme_classic() + theme(axis.text.x = element_text(angle = 45, hjust = 1 ), text = element_text(size=10)) 
+
+p2 =  ggplot(price100, aes(x = price)) +
+            geom_histogram(binwidth = 2, fill = "#00008b") + labs(title= "100+ Reviews", y = "Number of Games", x = "Price of Game ($)") + theme_classic() + theme(axis.text.x = element_text(angle = 45, hjust = 1 ), text = element_text(size=10)) 
+
+p3 =  ggplot(price1000, aes(x = price)) +
+            geom_histogram(binwidth = 2, fill = "#00008b") + labs(title= "1000+ Reviews", y = "Number of Games", x = "Price of Game ($)") + theme_classic() + theme(axis.text.x = element_text(angle = 45, hjust = 1 ), text = element_text(size=10)) 
+
+p4 =  ggplot(price10000, aes(x = price)) +
+            geom_histogram(binwidth = 2, fill = "#00008b") + labs(title= "10000+ Reviews",y = "Number of Games", x = "Price of Game ($)") + theme_classic() + theme(axis.text.x = element_text(angle = 45, hjust = 1 ), text = element_text(size=10)) 
+
+
+p5 =  ggplot(steam, aes(x = p_positive)) +
+            geom_histogram(binwidth = 2, fill = "#228B22") + labs(title= "Full Data", y = "Number of Games", x = "% Positive Reviews") + theme_classic() + theme(axis.text.x = element_text(angle = 45, hjust = 1 ), text = element_text(size=10)) 
+
+p6 =  ggplot(price100, aes(x = p_positive)) +
+            geom_histogram(binwidth = 2, fill = "#228B22") + labs(title= "100+ Reviews", y = "Number of Games", x = "% Positive Reviews") + theme_classic() + theme(axis.text.x = element_text(angle = 45, hjust = 1 ), text = element_text(size=10)) 
+
+p7 =  ggplot(price1000, aes(x = p_positive)) +
+            geom_histogram(binwidth = 2, fill = "#228B22") + labs(title= "1000+ Reviews", y = "Number of Games", x = "% Positive Reviews") + theme_classic() + theme(axis.text.x = element_text(angle = 45, hjust = 1 ), text = element_text(size=10)) 
+
+p8 =  ggplot(price10000, aes(x = p_positive)) +
+            geom_histogram(binwidth = 2, fill = "#228B22") + labs(title= "10000+ Reviews", y = "Number of Games", x = "% Positive Reviews") + theme_classic() + theme(axis.text.x = element_text(angle = 45, hjust = 1 ), text = element_text(size=10)) 
+
+grid.arrange(p1, p2, p5, p6, p3, p4, p7, p8, nrow=2)
+```
+
+An interesting feature of the Steam platform is that it promotes indie developers, and games can be made available to play for free. This is evident in the huge spike of games priced at zero. Beyond that, the price of games in general is right skewed. 
+
+A large problem was that our response variable was also skewed (left skewed). A large spike at 100 percent is also visible in the 'Full Data' plot above. This is the result of games which had a very small sample size for reviews - for example, a game that had only two reviews both of which are positive. The game appears to have a 100% rating but in reality this is not a large sample of reviewers. The second issue comes from a self-selection bias in that people who do not like a game would take the time to play the game or futher review - leaving the data with a positive bias. 
+
+As demonstrated above, both distributions are marginally improved by a `quality` filter. This filter sets a minimum number of total reviews, which helps remove any unique games that are not representative of the norm. 
+
+
+
+#### Media Comparison
+
+The original intent behind this investigation was to identify if there was overlap in popular media genres and thematic elements. Additionally, the idea that a popular theme in media may be well recieved in a video game. To investigate, we created word clouds. Unfortunately, there was not much overlap. The top game generes terms are not the same as with TV. Similarly the keyword tags appear to be more specific. The concept stil stands that a popular TV thematic elements may translate well into games. Space travel and time travel elements are popular in TV and could be included in future games.
+
+```{r wordcloud-code, message=FALSE, include = FALSE}
+library(tm)
+library(wordcloud)
+library(XML)
+library(RCurl)
+topTV<- read_csv('SteamAnalyzer/data/topTV.csv')
+game<- read_csv('SteamAnalyzer/data/steam.csv')
+games = game%>%
+    mutate(total_rating = positive_ratings+negative_ratings, p_positive = positive_ratings/total_rating*100)%>%
+    filter(total_rating>10000)%>%
+    head(100)%>%
+    select(appid, name, genres)%>%
+    separate_rows(genres, sep=";", convert = TRUE)%>%
+    group_by(appid)%>%
+    mutate(genres=paste(unique(genres),collapse=", "))
+
+tags = game%>%
+    mutate(total_rating = positive_ratings+negative_ratings, p_positive = positive_ratings/total_rating*100)%>%
+    filter(total_rating>10000)%>%
+    head(100)%>%
+    select(appid, name, steamspy_tags)%>%
+    separate_rows(steamspy_tags, sep=";", convert = TRUE)%>%
+    group_by(appid)%>%
+    mutate(steamspy_tags=paste(unique(steamspy_tags),collapse=", "))%>%
+    unique()
+```
+
+```{r wordcloud-figures, message=FALSE, warning=FALSE, echo=FALSE}
+par(mfcol=c(2,2), mai = c(0.1, 0.1, 0.1, 0.1))
+wordcloud(unlist(topTV$genre),
+                  colors=brewer.pal(8, "Dark2"))
+          
+wordcloud(unlist(games$genres),
+                  colors=brewer.pal(8, "Dark2"))
+        
+wordcloud(unlist(topTV$keywords), max.words = 13,
+                  colors=brewer.pal(8, "Set2"))
+
+wordcloud(unlist(tags$steamspy_tags), max.words = 13,
+                  colors=brewer.pal(8, "Set2"))
+```
+
+
+#### Model Prediction
+
+We can see from the model and prediction panel in the [shiny app](https://github.com/sta518/team-project-s02-blue/tree/master/SteamAnalyzer) the best adjusted R squared is achieved through the use of all the variables. Using this model, it appears that the best qualities in a game are it being an Indie game, has single player, and of the racing genere. These three qualities in a game predict the highest positive rating percentage from our model and predictions as they have the strongest positive coefficients. 
+
+### Conclusion
+
+Overall the best game appears to be an single player indie racing game with space/time travel and friendship thematic elements. 
+
+So when we went about finding out what the ‘best’ game would consist of, we of course started off knowing our data was skewed. Even though we tried transforming the data to reduce some of that skewness, no transformation appeared to substantially improve the distribution. So if we went further, we would go about trying again to reduce some of that skewness for our dataset. Additionally, even a transformation would not account for the self selection bias in our response variable. In the future, we would like to investigate a way to account for this issue properly.
+
+Another issue is that our model isn't very good with an adjusted R squared value of 0.34. Despite the significance of some of our predictors, we could not achieve a strong model. This is likely due to the size our our dataset which is so large it throws off the modeling. If we were to pursue this further or do it over, another idea would be investigate which types of games are most popular or get the best rating for kids in certain age ranges or category. This may help reduce the size of the data and perhaps allow for better modeling. 
+
